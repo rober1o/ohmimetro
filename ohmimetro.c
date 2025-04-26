@@ -3,7 +3,7 @@
 int main()
 {
     inicializar_hardware();
-
+    desenha_fig(resistores, BRILHO_PADRAO, pio, sm);
     while (true)
     {
 
@@ -54,6 +54,92 @@ void inicializar_hardware()
 
     adc_init();
     adc_gpio_init(ADC_PIN); // GPIO 28 como entrada analógica
+
+        // Define o PIO 0 para controle da matriz de LEDs
+        pio = pio0;
+
+        // Configura o clock do sistema para 133 MHz
+        bool clock_setado = set_sys_clock_khz(133000, false);
+    
+        // Inicializa a comunicação serial
+        stdio_init_all();
+    
+        // Exibe mensagem na serial caso o clock tenha sido configurado com sucesso
+        if (clock_setado)
+            printf("Clock setado %ld\n", clock_get_hz(clk_sys));
+    
+        // Carrega o programa PIO para controle da matriz de LEDs
+        int offset = pio_add_program(pio, &Matriz_5x5_program);
+    
+        // Obtém um state machine livre para o PIO
+        sm = pio_claim_unused_sm(pio, true);
+    
+        // Inicializa o programa PIO na matriz de LEDs
+        Matriz_5x5_program_init(pio, sm, offset, MATRIZ_PIN);
+
+
+}
+
+void desenha_fig(uint32_t *_matriz, uint8_t _intensidade, PIO pio, uint sm)
+{
+    uint32_t pixel = 0;
+    uint8_t r, g, b;
+
+    for (int i = 24; i > 19; i--) // Linha 1
+    {
+        pixel = _matriz[i];
+        b = ((pixel >> 16) & 0xFF) * (_intensidade / 100.00); // Isola os 8 bits mais significativos (azul)
+        g = ((pixel >> 8) & 0xFF) * (_intensidade / 100.00);  // Isola os 8 bits intermediários (verde)
+        r = (pixel & 0xFF) * (_intensidade / 100.00);         // Isola os 8 bits menos significativos (vermelho)
+        pixel = 0;
+        pixel = (g << 16) | (r << 8) | b;
+        pio_sm_put_blocking(pio, sm, pixel << 8u);
+    }
+
+    for (int i = 15; i < 20; i++) // Linha 2
+    {
+        pixel = _matriz[i];
+        b = ((pixel >> 16) & 0xFF) * (_intensidade / 100.00); // Isola os 8 bits mais significativos (azul)
+        g = ((pixel >> 8) & 0xFF) * (_intensidade / 100.00);  // Isola os 8 bits intermediários (verde)
+        r = (pixel & 0xFF) * (_intensidade / 100.00);         // Isola os 8 bits menos significativos (vermelho)
+        pixel = 0;
+        pixel = (b << 16) | (r << 8) | g;
+        pixel = (g << 16) | (r << 8) | b;
+        pio_sm_put_blocking(pio, sm, pixel << 8u);
+    }
+
+    for (int i = 14; i > 9; i--) // Linha 3
+    {
+        pixel = _matriz[i];
+        b = ((pixel >> 16) & 0xFF) * (_intensidade / 100.00); // Isola os 8 bits mais significativos (azul)
+        g = ((pixel >> 8) & 0xFF) * (_intensidade / 100.00);  // Isola os 8 bits intermediários (verde)
+        r = (pixel & 0xFF) * (_intensidade / 100.00);         // Isola os 8 bits menos significativos (vermelho)
+        pixel = 0;
+        pixel = (g << 16) | (r << 8) | b;
+        pio_sm_put_blocking(pio, sm, pixel << 8u);
+    }
+
+    for (int i = 5; i < 10; i++) // Linha 4
+    {
+        pixel = _matriz[i];
+        b = ((pixel >> 16) & 0xFF) * (_intensidade / 100.00); // Isola os 8 bits mais significativos (azul)
+        g = ((pixel >> 8) & 0xFF) * (_intensidade / 100.00);  // Isola os 8 bits intermediários (verde)
+        r = (pixel & 0xFF) * (_intensidade / 100.00);         // Isola os 8 bits menos significativos (vermelho)
+        pixel = 0;
+        pixel = (g << 16) | (r << 8) | b;
+        pio_sm_put_blocking(pio, sm, pixel << 8u);
+    }
+
+    for (int i = 4; i > -1; i--) // Linha 5
+    {
+        pixel = _matriz[i];
+        b = ((pixel >> 16) & 0xFF) * (_intensidade / 100.00); // Isola os 8 bits mais significativos (azul)
+        g = ((pixel >> 8) & 0xFF) * (_intensidade / 100.00);  // Isola os 8 bits intermediários (verde)
+        r = (pixel & 0xFF) * (_intensidade / 100.00);         // Isola os 8 bits menos significativos (vermelho)
+        pixel = 0;
+        pixel = (g << 16) | (r << 8) | b;
+        pio_sm_put_blocking(pio, sm, pixel << 8u);
+    }
 }
 
 void atualizar_display(float resistencia)
@@ -65,7 +151,7 @@ void atualizar_display(float resistencia)
     ssd1306_line(&ssd, 3, 25, 123, 25, true);             // Desenha uma linha
     ssd1306_line(&ssd, 3, 37, 123, 37, true);             // Desenha uma linha
     ssd1306_draw_string(&ssd, "ROBERTO", 30, 6);          // Desenha uma string
-    ssd1306_draw_string(&ssd, "EMBARCATECH", 20, 16);     // Desenha uma string
+    ssd1306_draw_string(&ssd, "CARDOSO", 20, 16);     // Desenha uma string
     ssd1306_draw_string(&ssd, "  Ohmimetro", 10, 28);     // Desenha uma string
     ssd1306_draw_string(&ssd, "ADC", 13, 41);             // Desenha uma string
     ssd1306_draw_string(&ssd, "Resisten.", 50, 41);       // Desenha uma string

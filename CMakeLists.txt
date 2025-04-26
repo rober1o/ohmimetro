@@ -11,23 +11,32 @@ pico_sdk_init()
 
 
 add_executable(${PROJECT_NAME}  
-        Ohmimetro.c  # Código principal 
+    ohmimetro.c  # Código principal 
         lib/ssd1306.c # Biblioteca para o display OLED
         )
+
+# Definir nome e versão do programa
+pico_set_program_name(ohmimetro "ohmimetro")
+pico_set_program_version(ohmimetro "0.1")
+
+# Gerar cabeçalho PIO (se necessário)
+pico_generate_pio_header(ohmimetro ${CMAKE_CURRENT_LIST_DIR}/pio_wave.pio)
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE 
         PICO_PRINTF_SUPPORT_FLOAT=1 
         PICO_STDIO_ENABLE_PRINTF=1
     )
 
+
+
 target_link_libraries(${PROJECT_NAME} 
         pico_stdlib 
         hardware_i2c
         hardware_adc
+        hardware_pio
         )
 
 pico_enable_stdio_usb(${PROJECT_NAME} 1)
 pico_enable_stdio_uart(${PROJECT_NAME} 0)
 
 pico_add_extra_outputs(${PROJECT_NAME})
-
