@@ -9,7 +9,6 @@
 #include "pico/stdlib.h"
 #include "hardware/pio.h"  // Controle do PIO (Programável I/O)
 #include "hardware/clocks.h" // Manipulação de clock
-#include "numeros.h"       // Arrays para exibir na matriz de LED
 #include "pio_wave.pio.h"  // Código PIO 
 #include "lib/ssd1306.h"
 #include "lib/font.h"
@@ -64,6 +63,7 @@ void atualizar_display(float resistencia);
 float calcular_resistencia();
 int encontrar_faixa_comercial(float valor);
 const char** valor_para_cores(int valor_resistor);
+void exibir_faixas_matriz(int valor_resistor);
 
 
 #endif // OHMIMETRO

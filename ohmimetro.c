@@ -3,15 +3,15 @@
 int main()
 {
     inicializar_hardware();
-    desenha_fig(resistores, BRILHO_PADRAO, pio, sm);
+    desenha_fig(cor_resistor, BRILHO_PADRAO, pio, sm);
     while (true)
     {
 
         float resistencia = calcular_resistencia();
 
         atualizar_display(resistencia);
-
-        sleep_ms(700);
+        exibir_faixas_matriz(resistencia);
+        sleep_ms(100);
     }
 }
 
@@ -55,29 +55,27 @@ void inicializar_hardware()
     adc_init();
     adc_gpio_init(ADC_PIN); // GPIO 28 como entrada analógica
 
-        // Define o PIO 0 para controle da matriz de LEDs
-        pio = pio0;
+    // Define o PIO 0 para controle da matriz de LEDs
+    pio = pio0;
 
-        // Configura o clock do sistema para 133 MHz
-        bool clock_setado = set_sys_clock_khz(133000, false);
-    
-        // Inicializa a comunicação serial
-        stdio_init_all();
-    
-        // Exibe mensagem na serial caso o clock tenha sido configurado com sucesso
-        if (clock_setado)
-            printf("Clock setado %ld\n", clock_get_hz(clk_sys));
-    
-        // Carrega o programa PIO para controle da matriz de LEDs
-        int offset = pio_add_program(pio, &Matriz_5x5_program);
-    
-        // Obtém um state machine livre para o PIO
-        sm = pio_claim_unused_sm(pio, true);
-    
-        // Inicializa o programa PIO na matriz de LEDs
-        Matriz_5x5_program_init(pio, sm, offset, MATRIZ_PIN);
+    // Configura o clock do sistema para 133 MHz
+    bool clock_setado = set_sys_clock_khz(133000, false);
 
+    // Inicializa a comunicação serial
+    stdio_init_all();
 
+    // Exibe mensagem na serial caso o clock tenha sido configurado com sucesso
+    if (clock_setado)
+        printf("Clock setado %ld\n", clock_get_hz(clk_sys));
+
+    // Carrega o programa PIO para controle da matriz de LEDs
+    int offset = pio_add_program(pio, &Matriz_5x5_program);
+
+    // Obtém um state machine livre para o PIO
+    sm = pio_claim_unused_sm(pio, true);
+
+    // Inicializa o programa PIO na matriz de LEDs
+    Matriz_5x5_program_init(pio, sm, offset, MATRIZ_PIN);
 }
 
 void desenha_fig(uint32_t *_matriz, uint8_t _intensidade, PIO pio, uint sm)
@@ -145,15 +143,15 @@ void desenha_fig(uint32_t *_matriz, uint8_t _intensidade, PIO pio, uint sm)
 void atualizar_display(float resistencia)
 {
     float teste = encontrar_faixa_comercial(resistencia);
-    
-    sprintf(valor_resistencia, "%1.0f", resistencia);  // Converte o float em string
-    sprintf(valor_adc, "%1.0f", teste);  // Converte o float em string
+
+    sprintf(valor_resistencia, "%1.0f", resistencia); // Converte o float em string
+    sprintf(valor_adc, "%1.0f", teste);               // Converte o float em string
 
     // Obtendo as três cores (faixa1, faixa2 e multiplicador)
-    const char** cores = valor_para_cores((int)teste);  // Chama a função que retorna as cores
+    const char **cores = valor_para_cores((int)teste); // Chama a função que retorna as cores
 
-    ssd1306_fill(&ssd, false);  // Limpa o display
-    ssd1306_rect(&ssd, 3, 3, 122, 58, true, false);  // Desenha o retângulo principal
+    ssd1306_fill(&ssd, false);                      // Limpa o display
+    ssd1306_rect(&ssd, 3, 3, 122, 58, true, false); // Desenha o retângulo principal
 
     // Desenha os títulos das faixas e multiplicador
     ssd1306_draw_string(&ssd, "F1:", 6, 6);  // Faixa 1
@@ -166,20 +164,14 @@ void atualizar_display(float resistencia)
     ssd1306_draw_string(&ssd, cores[2], 30, 30);
 
     // Desenha a linha horizontal começando em y = 42
-    ssd1306_line(&ssd, 4, 42, 121, 42, true);  // Linha horizontal de quase ponta a ponta
+    ssd1306_line(&ssd, 4, 42, 121, 42, true); // Linha horizontal de quase ponta a ponta
 
     // Apenas "RR" e os valores
-    ssd1306_draw_string(&ssd, "RR:", 8, 50);  // Texto "RR:"
-    ssd1306_draw_string(&ssd, valor_resistencia, 40, 50);  // Valor da resistência
-    
-    ssd1306_send_data(&ssd);  // Atualiza o display
+    ssd1306_draw_string(&ssd, "RR:", 8, 50);              // Texto "RR:"
+    ssd1306_draw_string(&ssd, valor_resistencia, 40, 50); // Valor da resistência
+
+    ssd1306_send_data(&ssd); // Atualiza o display
 }
-
-
-
-
-
-
 
 float calcular_resistencia()
 {
@@ -198,12 +190,15 @@ float calcular_resistencia()
     return R_x;
 }
 
-int encontrar_faixa_comercial(float valor) {
-    for (int i = 0; i < TAMANHO_SERIE; i++) {
+int encontrar_faixa_comercial(float valor)
+{
+    for (int i = 0; i < TAMANHO_SERIE; i++)
+    {
         int menor = serieE24[i] * 95 / 100;
         int maior = serieE24[i] * 105 / 100;
 
-        if (valor >= menor && valor <= maior) {
+        if (valor >= menor && valor <= maior)
+        {
             return serieE24[i];
         }
     }
@@ -211,16 +206,18 @@ int encontrar_faixa_comercial(float valor) {
 }
 
 // Função para converter valor para cores
-const char** valor_para_cores(int valor_resistor) {
-    static const char* cores_resultado[3];  // Array para armazenar as 3 cores
+const char **valor_para_cores(int valor_resistor)
+{
+    static const char *cores_resultado[3]; // Array para armazenar as 3 cores
 
     int digito1, digito2, multiplicador = 0;
     float resul = valor_resistor;
 
     // Divida até que resul seja menor que 100
-    while (resul >= 100) { 
-        resul /= 10;  // Divide o número por 10
-        multiplicador++;   // Incrementa o multiplicador
+    while (resul >= 100)
+    {
+        resul /= 10;     // Divide o número por 10
+        multiplicador++; // Incrementa o multiplicador
     }
 
     // Primeiro dígito: parte inteira de resul
@@ -236,4 +233,41 @@ const char** valor_para_cores(int valor_resistor) {
 
     // Retornar o array de cores
     return cores_resultado;
+}
+
+// Função para converter valor para cores
+void exibir_faixas_matriz(int valor_resistor)
+{
+
+    int resistencia_comercial = encontrar_faixa_comercial(valor_resistor);
+
+    int digito1, digito2, multiplicador = 0;
+    float resul = resistencia_comercial;
+    uint32_t cor_f1, cor_f2, cor_mul;
+    if (resistencia_comercial != -1)
+    {
+        // Divida até que resul seja menor que 100
+        while (resul >= 100)
+        {
+            resul /= 10;     // Divide o número por 10
+            multiplicador++; // Incrementa o multiplicador
+        }
+        // Primeiro dígito: parte inteira de resul
+        digito1 = (int)(resul) / 10;
+        // Segundo dígito: pegamos o resto da divisão por 10
+        digito2 = (int)(resul) % 10;
+
+        cor_f1 = cores_faixas_matriz[digito1];
+        cor_f2 = cores_faixas_matriz[digito2];
+        cor_mul = cores_multiplicador_matriz[multiplicador];
+
+        cor_resistor[2] = cor_f1;
+        cor_resistor[12] = cor_f2;
+        cor_resistor[22] = cor_mul;
+        
+        desenha_fig(cor_resistor, BRILHO_PADRAO, pio, sm);
+
+    }else{
+        desenha_fig(matriz_apagada, BRILHO_PADRAO, pio, sm);
+    }
 }
