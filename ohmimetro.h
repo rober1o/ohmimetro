@@ -34,7 +34,7 @@
 #define ADC_PIN 28 // GPIO para o ohmimetro
 #define Botao_A 5  // GPIO para botão A
 #define botaoB 6   // GPIO para botão B
-
+#define TAMANHO_SERIE (sizeof(serieE24) / sizeof(serieE24[0]))
 // Configurações gerais
 
 
@@ -62,6 +62,8 @@ void desenha_fig(uint32_t *_matriz, uint8_t _intensidade, PIO pio, uint sm);
 void inicializar_hardware();
 void atualizar_display(float resistencia);
 float calcular_resistencia();
+int encontrar_faixa_comercial(float valor);
+const char** valor_para_cores(int valor_resistor);
 
 
 #endif // OHMIMETRO

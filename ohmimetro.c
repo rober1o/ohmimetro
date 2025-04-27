@@ -144,22 +144,42 @@ void desenha_fig(uint32_t *_matriz, uint8_t _intensidade, PIO pio, uint sm)
 
 void atualizar_display(float resistencia)
 {
-    sprintf(valor_resistencia, "%1.0f", resistencia); // Converte o float em string
-    //  Atualiza o conteúdo do display com animações
-    ssd1306_fill(&ssd, false);                            // Limpa o display
-    ssd1306_rect(&ssd, 3, 3, 122, 60, true, false);       // Desenha um retângulo
-    ssd1306_line(&ssd, 3, 25, 123, 25, true);             // Desenha uma linha
-    ssd1306_line(&ssd, 3, 37, 123, 37, true);             // Desenha uma linha
-    ssd1306_draw_string(&ssd, "ROBERTO", 30, 6);          // Desenha uma string
-    ssd1306_draw_string(&ssd, "CARDOSO", 20, 16);     // Desenha uma string
-    ssd1306_draw_string(&ssd, "  Ohmimetro", 10, 28);     // Desenha uma string
-    ssd1306_draw_string(&ssd, "ADC", 13, 41);             // Desenha uma string
-    ssd1306_draw_string(&ssd, "Resisten.", 50, 41);       // Desenha uma string
-    ssd1306_line(&ssd, 44, 37, 44, 60, true);             // Desenha uma linha vertical
-    ssd1306_draw_string(&ssd, valor_adc, 8, 52);          // Desenha uma string
-    ssd1306_draw_string(&ssd, valor_resistencia, 59, 52); // Desenha uma string
-    ssd1306_send_data(&ssd);                              // Atualiza o display
+    float teste = encontrar_faixa_comercial(resistencia);
+    
+    sprintf(valor_resistencia, "%1.0f", resistencia);  // Converte o float em string
+    sprintf(valor_adc, "%1.0f", teste);  // Converte o float em string
+
+    // Obtendo as três cores (faixa1, faixa2 e multiplicador)
+    const char** cores = valor_para_cores((int)teste);  // Chama a função que retorna as cores
+
+    ssd1306_fill(&ssd, false);  // Limpa o display
+    ssd1306_rect(&ssd, 3, 3, 122, 58, true, false);  // Desenha o retângulo principal
+
+    // Desenha os títulos das faixas e multiplicador
+    ssd1306_draw_string(&ssd, "F1:", 6, 6);  // Faixa 1
+    ssd1306_draw_string(&ssd, "F2:", 6, 18); // Faixa 2
+    ssd1306_draw_string(&ssd, "M:", 6, 30);  // Multiplicador
+
+    // Imprime as cores (faixa1, faixa2, multiplicador)
+    ssd1306_draw_string(&ssd, cores[0], 30, 6);
+    ssd1306_draw_string(&ssd, cores[1], 30, 18);
+    ssd1306_draw_string(&ssd, cores[2], 30, 30);
+
+    // Desenha a linha horizontal começando em y = 42
+    ssd1306_line(&ssd, 4, 42, 121, 42, true);  // Linha horizontal de quase ponta a ponta
+
+    // Apenas "RR" e os valores
+    ssd1306_draw_string(&ssd, "RR:", 8, 50);  // Texto "RR:"
+    ssd1306_draw_string(&ssd, valor_resistencia, 40, 50);  // Valor da resistência
+    
+    ssd1306_send_data(&ssd);  // Atualiza o display
 }
+
+
+
+
+
+
 
 float calcular_resistencia()
 {
@@ -176,4 +196,44 @@ float calcular_resistencia()
     // Fórmula simplificada: R_x = R_conhecido * ADC_encontrado /(ADC_RESOLUTION - adc_encontrado)
     R_x = (R_conhecido * media) / (ADC_RESOLUTION - media);
     return R_x;
+}
+
+int encontrar_faixa_comercial(float valor) {
+    for (int i = 0; i < TAMANHO_SERIE; i++) {
+        int menor = serieE24[i] * 95 / 100;
+        int maior = serieE24[i] * 105 / 100;
+
+        if (valor >= menor && valor <= maior) {
+            return serieE24[i];
+        }
+    }
+    return -1; // Não encontrado
+}
+
+// Função para converter valor para cores
+const char** valor_para_cores(int valor_resistor) {
+    static const char* cores_resultado[3];  // Array para armazenar as 3 cores
+
+    int digito1, digito2, multiplicador = 0;
+    float resul = valor_resistor;
+
+    // Divida até que resul seja menor que 100
+    while (resul >= 100) { 
+        resul /= 10;  // Divide o número por 10
+        multiplicador++;   // Incrementa o multiplicador
+    }
+
+    // Primeiro dígito: parte inteira de resul
+    digito1 = (int)(resul) / 10;
+
+    // Segundo dígito: pegamos o resto da divisão por 10
+    digito2 = (int)(resul) % 10;
+
+    // Armazenar os resultados no array
+    cores_resultado[0] = cores_faixas[digito1];
+    cores_resultado[1] = cores_faixas[digito2];
+    cores_resultado[2] = cores_multiplicador[multiplicador];
+
+    // Retornar o array de cores
+    return cores_resultado;
 }
