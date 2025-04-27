@@ -8,10 +8,10 @@ int main()
     {
 
         float resistencia = calcular_resistencia();
-
+        
         atualizar_display(resistencia);
         exibir_faixas_matriz(resistencia);
-        sleep_ms(100);
+        sleep_ms(50);
     }
 }
 
@@ -19,7 +19,21 @@ int main()
 
 void gpio_irq_handler(uint gpio, uint32_t events)
 {
-    reset_usb_boot(0, 0);
+    if (gpio == Botao_A)
+    {
+        botao_pressionado = !botao_pressionado;
+    }
+    else if (gpio == botaoB)
+    {
+        reset_usb_boot(0, 0);
+    }else if(gpio == botao_c){
+        if(botao_c_pressionado){
+            ADC_RESOLUTION = 4095;
+        }else{
+            ADC_RESOLUTION = 3585;
+        }
+        botao_c_pressionado = !botao_c_pressionado;
+    }
 }
 
 // ROTINA PARA INICIALIZAR PERIFERICOS NECESSÁRIOS
@@ -36,7 +50,12 @@ void inicializar_hardware()
     gpio_init(Botao_A);
     gpio_set_dir(Botao_A, GPIO_IN);
     gpio_pull_up(Botao_A);
+    gpio_set_irq_enabled_with_callback(Botao_A, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
 
+    gpio_init(botao_c);
+    gpio_set_dir(botao_c, GPIO_IN);
+    gpio_pull_up(botao_c);
+    gpio_set_irq_enabled_with_callback(botao_c, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
     // I2C Initialisation. Using it at 400Khz.
     i2c_init(I2C_PORT, 400 * 1000);
 
@@ -142,35 +161,72 @@ void desenha_fig(uint32_t *_matriz, uint8_t _intensidade, PIO pio, uint sm)
 
 void atualizar_display(float resistencia)
 {
-    float teste = encontrar_faixa_comercial(resistencia);
-
+    float valor_comercial = encontrar_faixa_comercial(resistencia);
+    float desvio = resistencia - valor_comercial;
     sprintf(valor_resistencia, "%1.0f", resistencia); // Converte o float em string
-    sprintf(valor_adc, "%1.0f", teste);               // Converte o float em string
+    sprintf(valor_adc, "%1.0f", valor_comercial);     // Converte o float em string
+    sprintf(variacao, "%1.0f", desvio);     // Converte o float em string
+    if (botao_pressionado && valor_comercial > 0)
+    {
+        
+        ssd1306_fill(&ssd, false);                      // Limpa o display
+        ssd1306_rect(&ssd, 3, 3, 122, 58, true, false); // Desenha o retângulo principal
+        ssd1306_draw_string(&ssd, "E24:", 12, 15);      // Faixa 1
+        ssd1306_draw_string(&ssd, valor_adc, 45, 15);
+        ssd1306_line(&ssd, 4, 33, 121, 33, true); // Linha horizontal de quase ponta a ponta
+        ssd1306_draw_string(&ssd, "Desvio:", 8, 45);      // Faixa 1
+        ssd1306_draw_string(&ssd, variacao, 70, 45);
+        ssd1306_send_data(&ssd);
+    }
+    else
+    {
+        if (valor_comercial > 0)
+        {
+            // Obtendo as três cores (faixa1, faixa2 e multiplicador)
+            const char **cores = valor_para_cores((int)valor_comercial); // Chama a função que retorna as cores
 
-    // Obtendo as três cores (faixa1, faixa2 e multiplicador)
-    const char **cores = valor_para_cores((int)teste); // Chama a função que retorna as cores
+            ssd1306_fill(&ssd, false);                      // Limpa o display
+            ssd1306_rect(&ssd, 3, 3, 122, 58, true, false); // Desenha o retângulo principal
 
-    ssd1306_fill(&ssd, false);                      // Limpa o display
-    ssd1306_rect(&ssd, 3, 3, 122, 58, true, false); // Desenha o retângulo principal
+            // Desenha os títulos das faixas e multiplicador
+            ssd1306_draw_string(&ssd, "F1:", 6, 6);  // Faixa 1
+            ssd1306_draw_string(&ssd, "F2:", 6, 18); // Faixa 2
+            ssd1306_draw_string(&ssd, "M:", 6, 30);  // Multiplicador
 
-    // Desenha os títulos das faixas e multiplicador
-    ssd1306_draw_string(&ssd, "F1:", 6, 6);  // Faixa 1
-    ssd1306_draw_string(&ssd, "F2:", 6, 18); // Faixa 2
-    ssd1306_draw_string(&ssd, "M:", 6, 30);  // Multiplicador
+            // Imprime as cores (faixa1, faixa2, multiplicador)
+            ssd1306_draw_string(&ssd, cores[0], 30, 6);
+            ssd1306_draw_string(&ssd, cores[1], 30, 18);
+            ssd1306_draw_string(&ssd, cores[2], 30, 30);
 
-    // Imprime as cores (faixa1, faixa2, multiplicador)
-    ssd1306_draw_string(&ssd, cores[0], 30, 6);
-    ssd1306_draw_string(&ssd, cores[1], 30, 18);
-    ssd1306_draw_string(&ssd, cores[2], 30, 30);
+            // Desenha a linha horizontal começando em y = 42
+            ssd1306_line(&ssd, 4, 42, 121, 42, true); // Linha horizontal de quase ponta a ponta
 
-    // Desenha a linha horizontal começando em y = 42
-    ssd1306_line(&ssd, 4, 42, 121, 42, true); // Linha horizontal de quase ponta a ponta
+            // Apenas "RR" e os valores
+            ssd1306_draw_string(&ssd, "RR:", 8, 50);              // Texto "RR:"
+            ssd1306_draw_string(&ssd, valor_resistencia, 40, 50); // Valor da resistência
 
-    // Apenas "RR" e os valores
-    ssd1306_draw_string(&ssd, "RR:", 8, 50);              // Texto "RR:"
-    ssd1306_draw_string(&ssd, valor_resistencia, 40, 50); // Valor da resistência
+            ssd1306_send_data(&ssd); // Atualiza o display
+        }
+        else
+        {
+            // Obtendo as três cores (faixa1, faixa2 e multiplicador)
+            const char **cores = valor_para_cores((int)valor_comercial); // Chama a função que retorna as cores
 
-    ssd1306_send_data(&ssd); // Atualiza o display
+            ssd1306_fill(&ssd, false);                      // Limpa o display
+            ssd1306_rect(&ssd, 3, 3, 122, 58, true, false); // Desenha o retângulo principal
+
+            // Desenha os títulos das faixas e multiplicador
+            ssd1306_draw_string(&ssd, "FORA DE FAIXA", 11, 20);  // Faixa 1
+            // Desenha a linha horizontal começando em y = 42
+            ssd1306_line(&ssd, 4, 42, 121, 42, true); // Linha horizontal de quase ponta a ponta
+
+            // Apenas "RR" e os valores
+            ssd1306_draw_string(&ssd, "RR:", 8, 50);              // Texto "RR:"
+            ssd1306_draw_string(&ssd, valor_resistencia, 40, 50); // Valor da resistência
+
+            ssd1306_send_data(&ssd); // Atualiza o display
+        }
+    }
 }
 
 float calcular_resistencia()
@@ -264,10 +320,10 @@ void exibir_faixas_matriz(int valor_resistor)
         cor_resistor[2] = cor_f1;
         cor_resistor[12] = cor_f2;
         cor_resistor[22] = cor_mul;
-        
         desenha_fig(cor_resistor, BRILHO_PADRAO, pio, sm);
-
-    }else{
+    }
+    else
+    {
         desenha_fig(matriz_apagada, BRILHO_PADRAO, pio, sm);
     }
 }

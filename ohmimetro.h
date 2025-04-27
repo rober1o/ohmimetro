@@ -33,6 +33,7 @@
 #define ADC_PIN 28 // GPIO para o ohmimetro
 #define Botao_A 5  // GPIO para botão A
 #define botaoB 6   // GPIO para botão B
+#define botao_c 22
 #define TAMANHO_SERIE (sizeof(serieE24) / sizeof(serieE24[0]))
 // Configurações gerais
 
@@ -50,6 +51,9 @@ int ADC_RESOLUTION = 4095; // Resolução do ADC (12 bits)
 ssd1306_t ssd;             // Inicializa a estrutura do display
 char valor_adc[5];         // Buffer para armazenar a string
 char valor_resistencia[5]; // Buffer para armazenar a string
+char variacao[5]; // Buffer para armazenar a string
+bool botao_pressionado = false;
+bool botao_c_pressionado = false;
 
 
 // =============================
